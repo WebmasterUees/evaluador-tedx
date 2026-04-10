@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  EVALUATOR
+}
+
+model User {
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  password_hash          String
+  role                   Role
+  created_evaluations    EvaluationDefinition[] @relation("CreatorEvaluations")
+  evaluation_assignments EvaluationAssignment[] @relation("EvaluatorAssignments")
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+}
+
+model Participant {
+  id                      String                  @id @default(cuid())
+  name                    String
+  participant_evaluations ParticipantEvaluation[]
+  group_participants      GroupParticipant[]
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+}
+
+model EvaluationGroup {
+  id                     String                 @id @default(cuid())
+  name                   String
+  description            String?
+  evaluation_definitions EvaluationDefinition[]
+  assignments            EvaluationAssignment[]
+  group_participants     GroupParticipant[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+}
+
+model GroupParticipant {
+  id                  String          @id @default(cuid())
+  evaluation_group_id String
+  participant_id      String
+  evaluation_group    EvaluationGroup @relation(fields: [evaluation_group_id], references: [id], onDelete: Cascade)
+  participant         Participant     @relation(fields: [participant_id], references: [id], onDelete: Cascade)
+  createdAt           DateTime        @default(now())
+
+  @@unique([evaluation_group_id, participant_id])
+  @@index([participant_id])
+}
+
+model EvaluationDefinition {
+  id                    String               @id @default(cuid())
+  title                 String
+  creator_id            String
+  evaluation_group_id   String?
+  creator               User                 @relation("CreatorEvaluations", fields: [creator_id], references: [id])
+  evaluation_group      EvaluationGroup?     @relation(fields: [evaluation_group_id], references: [id])
+  questions             Question[]
+  assignments           EvaluationAssignment[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([creator_id])
+  @@index([evaluation_group_id])
+}
+
+model Question {
+  id                       String               @id @default(cuid())
+  evaluation_definition_id String
+  text                     String
+  weight                   Decimal              @db.Decimal(8, 4)
+  scale_min                Int                  @default(1)
+  scale_max                Int                  @default(10)
+  evaluation_definition    EvaluationDefinition @relation(fields: [evaluation_definition_id], references: [id], onDelete: Cascade)
+  responses                Response[]
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  @@index([evaluation_definition_id])
+}
+
+model EvaluationAssignment {
+  id                       String                  @id @default(cuid())
+  evaluator_id             String
+  evaluation_definition_id String
+  evaluation_group_id      String
+  evaluator                User                    @relation("EvaluatorAssignments", fields: [evaluator_id], references: [id])
+  evaluation_definition    EvaluationDefinition    @relation(fields: [evaluation_definition_id], references: [id], onDelete: Cascade)
+  evaluation_group         EvaluationGroup         @relation(fields: [evaluation_group_id], references: [id])
+  participant_evaluations  ParticipantEvaluation[]
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  @@index([evaluator_id])
+  @@index([evaluation_group_id])
+  @@index([evaluation_definition_id])
+}
+
+model ParticipantEvaluation {
+  id                        String               @id @default(cuid())
+  assignment_id             String
+  participant_id            String
+  is_complete               Boolean              @default(false)
+  assignment                EvaluationAssignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+  participant               Participant          @relation(fields: [participant_id], references: [id], onDelete: Cascade)
+  responses                 Response[]
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  @@unique([assignment_id, participant_id])
+  @@index([participant_id])
+  @@index([assignment_id, is_complete])
+}
+
+model Response {
+  id                        String                @id @default(cuid())
+  participant_evaluation_id String
+  question_id               String
+  score                     Int
+  participant_evaluation    ParticipantEvaluation @relation(fields: [participant_evaluation_id], references: [id], onDelete: Cascade)
+  question                  Question              @relation(fields: [question_id], references: [id], onDelete: Cascade)
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+
+  @@unique([participant_evaluation_id, question_id])
+  @@index([question_id])
+}

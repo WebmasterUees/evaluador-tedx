@@ -1,0 +1,45 @@
+{
+  "name": "evaluador-tedx",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev -p 3005",
+    "build": "next build",
+    "start": "next start -p 3005",
+    "lint": "next lint",
+    "deploy:standalone": "next build && rm -rf .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static && pm2 restart all",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:seed": "prisma db seed"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "next": "^15.3.2",
+    "next-auth": "^5.0.0-beta.30",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-is": "^19.2.5",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.5.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^10.2.0",
+    "eslint-config-next": "^16.2.3",
+    "postcss": "^8.5.9",
+    "prisma": "^6.15.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "prisma": {
+    "seed": "node --import tsx prisma/seed.ts"
+  }
+}
