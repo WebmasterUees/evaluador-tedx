@@ -33,13 +33,25 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
   }, [groupParticipantsMap, selectedGroupId]);
 
   const [checkedParticipantIds, setCheckedParticipantIds] = useState<Set<string>>(defaultGroupParticipantIds);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setCheckedParticipantIds(defaultGroupParticipantIds);
   }, [defaultGroupParticipantIds]);
 
   return (
-    <form action={action} className="space-y-5 rounded-2xl bg-white p-6 shadow-sm">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (checkedParticipantIds.size === 0) {
+          e.preventDefault();
+          setError("Debes seleccionar al menos un participante.");
+          return;
+        }
+        setError(null);
+      }}
+      className="space-y-5 rounded-2xl bg-white p-6 shadow-sm"
+    >
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-700">Título de la evaluación</span>
@@ -192,6 +204,7 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
                     } else {
                       next.delete(participant.id);
                     }
+                    if (next.size > 0) setError(null);
                     return next;
                   });
                 }}
@@ -204,6 +217,10 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
       </fieldset>
 
       <input type="hidden" name="questions_json" value={questionsJson} />
+
+      {error ? (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600">{error}</p>
+      ) : null}
 
       <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
         Crear evaluacion
