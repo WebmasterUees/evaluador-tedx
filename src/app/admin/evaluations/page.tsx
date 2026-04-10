@@ -105,6 +105,39 @@ async function deleteEvaluation(formData: FormData) {
   revalidatePath("/admin/dashboards");
 }
 
+async function cloneEvaluation(formData: FormData) {
+  "use server";
+
+  await requireRoles(["ADMIN", "OPERATOR"]);
+  const definitionId = String(formData.get("definition_id") || "").trim();
+  if (!definitionId) return;
+
+  const source = await prisma.evaluationDefinition.findUnique({
+    where: { id: definitionId },
+    include: { questions: true, assignments: true },
+  });
+
+  if (!source) return;
+
+  await prisma.evaluationDefinition.create({
+    data: {
+      title: `${source.title} (copia)`,
+      creator_id: source.creator_id,
+      evaluation_group_id: source.evaluation_group_id,
+      questions: {
+        create: source.questions.map((q) => ({
+          text: q.text,
+          weight: q.weight,
+          scale_min: q.scale_min,
+          scale_max: q.scale_max,
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/admin/evaluations");
+}
+
 export default async function EvaluationsPage() {
   const [participants, groups, creators, evaluators, definitions, groupParticipants] = await Promise.all([
     prisma.participant.findMany({ orderBy: { name: "asc" } }),
@@ -155,12 +188,20 @@ export default async function EvaluationsPage() {
                     Evaluadores: {definition.assignments.map((assignment) => assignment.evaluator.email).join(", ") || "Sin evaluadores"}
                   </p>
                 </div>
-                <form action={deleteEvaluation}>
-                  <input type="hidden" name="definition_id" value={definition.id} />
-                  <button type="submit" className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50">
-                    Eliminar
-                  </button>
-                </form>
+                <div className="flex gap-2">
+                  <form action={cloneEvaluation}>
+                    <input type="hidden" name="definition_id" value={definition.id} />
+                    <button type="submit" className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                      Clonar
+                    </button>
+                  </form>
+                  <form action={deleteEvaluation}>
+                    <input type="hidden" name="definition_id" value={definition.id} />
+                    <button type="submit" className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50">
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
               </div>
             </article>
           ))}

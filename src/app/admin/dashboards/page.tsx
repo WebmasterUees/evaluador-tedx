@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import GroupParticipantSelector from "../../../components/admin/GroupParticipantSelector";
 import { requireRoles } from "../../../lib/auth-server";
 import { prisma } from "../../../lib/prisma";
 
@@ -175,32 +176,14 @@ export default async function DashboardsPage() {
             const selectedParticipants = groupParticipantsMap[group.id] || new Set<string>();
 
             return (
-              <form key={group.id} action={assignParticipantsToGroup} className="space-y-3 rounded-xl border border-slate-200 p-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{group.name}</p>
-                  <p className="text-xs text-slate-500">Selecciona los participantes que pertenecen a este grupo.</p>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                  {participants.map((participant) => (
-                    <label key={`${group.id}_${participant.id}`} className="inline-flex items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        name="participant_ids"
-                        value={participant.id}
-                        defaultChecked={selectedParticipants.has(participant.id)}
-                        className="h-4 w-4"
-                      />
-                      {participant.name}
-                    </label>
-                  ))}
-                </div>
-
-                <input type="hidden" name="group_id" value={group.id} />
-                <button type="submit" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                  Guardar participantes
-                </button>
-              </form>
+              <GroupParticipantSelector
+                key={group.id}
+                groupId={group.id}
+                groupName={group.name}
+                participants={participants.map((p) => ({ id: p.id, name: p.name }))}
+                initialSelected={Array.from(selectedParticipants)}
+                action={assignParticipantsToGroup}
+              />
             );
           })}
         </div>
