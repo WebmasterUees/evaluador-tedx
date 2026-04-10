@@ -179,7 +179,7 @@ export default async function DashboardsPage() {
 
             return (
               <GroupParticipantSelector
-                key={`${group.id}-${selectedArray.sort().join(",")}`}
+                key={`${group.id}-${[...selectedArray].sort().join(",")}`}
                 groupId={group.id}
                 groupName={group.name}
                 participants={participants.map((p) => ({ id: p.id, name: p.name }))}
