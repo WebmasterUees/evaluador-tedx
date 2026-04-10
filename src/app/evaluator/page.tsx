@@ -275,24 +275,26 @@ export default async function EvaluatorPage({
                     Pendientes: {assignment.pending} de {assignment.total}
                   </p>
                 </div>
-                {assignment.pending === 0 ? (
+                <div className="flex gap-2">
+                  {assignment.pending === 0 ? (
+                    <Link
+                      href={`/dashboard/evaluation-group/${assignment.groupId}?definition=${assignment.definitionId}`}
+                      className="rounded-lg bg-[#e10613] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                    >
+                      Ver resultados
+                    </Link>
+                  ) : null}
                   <Link
-                    href={`/dashboard/evaluation-group/${assignment.groupId}?definition=${assignment.definitionId}`}
-                    className="rounded-lg bg-[#e10613] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                    href={
+                      assignment.firstPendingId
+                        ? `/evaluator?a=${assignment.id}&pe=${assignment.firstPendingId}`
+                        : `/evaluator?a=${assignment.id}`
+                    }
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
                   >
-                    Ver resultados
+                    {assignment.pending > 0 ? "Continuar" : "Ver"}
                   </Link>
-                ) : null}
-                <Link
-                  href={
-                    assignment.firstPendingId
-                      ? `/evaluator?a=${assignment.id}&pe=${assignment.firstPendingId}`
-                      : `/evaluator?a=${assignment.id}`
-                  }
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-                >
-                  {assignment.pending > 0 ? "Continuar" : "Ver"}
-                </Link>
+                </div>
               </div>
             ))}
           </div>
