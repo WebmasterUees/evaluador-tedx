@@ -45,8 +45,9 @@ export async function getWeightedResultsByGroup(
   evaluationGroupId: string,
   evaluationDefinitionId?: string,
 ): Promise<DashboardResults> {
-  const participantEvaluations = await prisma.participantEvaluation.findMany({
+    const participantEvaluations = await prisma.participantEvaluation.findMany({
     where: {
+      is_complete: true,
       assignment: {
         evaluation_group_id: evaluationGroupId,
         ...(evaluationDefinitionId ? { evaluation_definition_id: evaluationDefinitionId } : {}),
@@ -62,8 +63,7 @@ export async function getWeightedResultsByGroup(
     },
   });
 
-  let globalTotal = 0;
-  const perParticipant = new Map<string, DashboardParticipantResult>();
+  const perParticipant = new Map<string, { id: string; name: string; totalScore: number; evaluatorCount: number }>();
 
   for (const participantEvaluation of participantEvaluations) {
     let participantTotal = 0;
@@ -75,19 +75,27 @@ export async function getWeightedResultsByGroup(
       participantTotal += normalizedScore * weight;
     }
 
-    globalTotal += participantTotal;
-
     const existing = perParticipant.get(participantEvaluation.participant.id) || {
       id: participantEvaluation.participant.id,
       name: participantEvaluation.participant.name,
-      total: 0,
+      totalScore: 0,
+      evaluatorCount: 0,
     };
 
-    existing.total += participantTotal;
+    existing.totalScore += participantTotal;
+    existing.evaluatorCount += 1;
     perParticipant.set(participantEvaluation.participant.id, existing);
   }
 
-  const participants = Array.from(perParticipant.values()).sort((left, right) => right.total - left.total);
+  const participants: DashboardParticipantResult[] = Array.from(perParticipant.values())
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      total: p.evaluatorCount > 0 ? p.totalScore / p.evaluatorCount : 0,
+    }))
+    .sort((left, right) => right.total - left.total);
+
+  const globalTotal = participants.reduce((sum, p) => sum + p.total, 0);
 
   return {
     total: globalTotal,

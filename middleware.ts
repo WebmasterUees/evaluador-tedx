@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "./src/auth";
-import { canAccessAdmin, roleHomePath, type AppRole } from "./src/lib/auth";
+import { canAccessOperatorResults, roleHomePath, type AppRole } from "./src/lib/auth";
 
 function startsWith(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((prefix) => pathname.startsWith(prefix));
@@ -19,15 +19,20 @@ export default auth((request) => {
     return NextResponse.redirect(new URL(roleHomePath(role), request.url));
   }
 
-  const needsAdminOrOperator = startsWith(pathname, ["/admin", "/dashboards"]);
+  const needsAdminOnly = startsWith(pathname, ["/admin", "/dashboards"]);
+  const needsOperatorResults = startsWith(pathname, ["/operador"]);
   const needsEvaluator = startsWith(pathname, ["/evaluator"]);
   const needsAnyAuth = startsWith(pathname, ["/dashboard"]);
 
-  if ((needsAdminOrOperator || needsEvaluator || needsAnyAuth) && !role) {
+  if ((needsAdminOnly || needsOperatorResults || needsEvaluator || needsAnyAuth) && !role) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (role && needsAdminOrOperator && !canAccessAdmin(role)) {
+  if (role && needsAdminOnly && role !== "ADMIN") {
+    return NextResponse.redirect(new URL(roleHomePath(role), request.url));
+  }
+
+  if (role && needsOperatorResults && !canAccessOperatorResults(role)) {
     return NextResponse.redirect(new URL(roleHomePath(role), request.url));
   }
 
