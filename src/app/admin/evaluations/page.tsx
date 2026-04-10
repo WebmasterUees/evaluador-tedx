@@ -16,6 +16,7 @@ async function createEvaluation(formData: FormData) {
   "use server";
 
   await requireRoles(["ADMIN", "OPERATOR"]);
+  const editingId = String(formData.get("editing_id") || "").trim();
   const title = String(formData.get("title") || "").trim();
   const creator_id = String(formData.get("creator_id") || "");
   const evaluation_group_id = String(formData.get("evaluation_group_id") || "");
@@ -60,37 +61,62 @@ async function createEvaluation(formData: FormData) {
     ),
   );
 
-  const definition = await prisma.evaluationDefinition.create({
-    data: {
-      title,
-      creator_id,
-      evaluation_group_id,
-      questions: {
-        create: validQuestions,
-      },
-    },
-  });
-
-  for (const evaluator_id of evaluator_ids) {
-    const assignment = await prisma.evaluationAssignment.create({
-      data: {
-        evaluator_id,
-        evaluation_definition_id: definition.id,
-        evaluation_group_id,
+  if (editingId) {
+    const existing = await prisma.evaluationDefinition.findUnique({
+      where: { id: editingId },
+      include: {
+        assignments: {
+          include: { _count: { select: { participant_evaluations: { where: { is_complete: true } } } } },
+        },
       },
     });
 
-    if (participantIdsToUse.length > 0) {
-      await prisma.participantEvaluation.createMany({
-        data: participantIdsToUse.map((participant_id) => ({
-          assignment_id: assignment.id,
-          participant_id,
-        })),
-      });
+    if (!existing) return;
+
+    const completedCount = existing.assignments.reduce((sum, a) => sum + a._count.participant_evaluations, 0);
+    if (completedCount > 0) {
+      return;
     }
   }
 
+  await prisma.$transaction(async (tx) => {
+    if (editingId) {
+      await tx.evaluationDefinition.delete({ where: { id: editingId } });
+    }
+
+    const definition = await tx.evaluationDefinition.create({
+      data: {
+        title,
+        creator_id,
+        evaluation_group_id,
+        questions: {
+          create: validQuestions,
+        },
+      },
+    });
+
+    for (const evaluator_id of evaluator_ids) {
+      const assignment = await tx.evaluationAssignment.create({
+        data: {
+          evaluator_id,
+          evaluation_definition_id: definition.id,
+          evaluation_group_id,
+        },
+      });
+
+      if (participantIdsToUse.length > 0) {
+        await tx.participantEvaluation.createMany({
+          data: participantIdsToUse.map((participant_id) => ({
+            assignment_id: assignment.id,
+            participant_id,
+          })),
+        });
+      }
+    }
+  });
+
   revalidatePath("/admin/evaluations");
+  revalidatePath("/admin/dashboards");
 }
 
 async function deleteEvaluation(formData: FormData) {
@@ -178,6 +204,7 @@ export default async function EvaluationsPage() {
         assignments: {
           include: {
             evaluator: true,
+            participant_evaluations: { select: { participant_id: true } },
             _count: { select: { participant_evaluations: true } },
           },
         },
@@ -195,54 +222,39 @@ export default async function EvaluationsPage() {
     return acc;
   }, {});
 
+  const editableDefinitions = definitions.map((d) => ({
+    id: d.id,
+    title: d.title,
+    creator_id: d.creator_id,
+    evaluation_group_id: d.evaluation_group_id,
+    groupName: d.evaluation_group?.name || "Sin grupo",
+    questions: d.questions.map((q) => ({
+      text: q.text,
+      weight: String(q.weight),
+      scale_min: String(q.scale_min),
+      scale_max: String(q.scale_max),
+    })),
+    evaluator_ids: d.assignments.map((a) => a.evaluator_id),
+    evaluator_emails: d.assignments.map((a) => a.evaluator.email),
+    participant_ids: Array.from(new Set(d.assignments.flatMap((a) => a.participant_evaluations.map((pe) => pe.participant_id)))),
+    participantCount: Array.from(new Set(d.assignments.flatMap((a) => a.participant_evaluations.map((pe) => pe.participant_id)))).length,
+    participantDetail: d.assignments.length > 0 ? d.assignments.map((a) => `${a.evaluator.email}: ${a._count.participant_evaluations}`).join(", ") : "",
+  }));
+
   return (
     <section className="mx-auto max-w-6xl space-y-6 px-4 py-8 md:px-6">
       <EvaluationDefinitionForm
+        key={definitions.map((d) => d.id).join(",")}
         action={createEvaluation}
+        cloneAction={cloneEvaluation}
+        deleteAction={deleteEvaluation}
         participants={participants.map((p) => ({ id: p.id, name: p.name }))}
         groups={groups.map((g) => ({ id: g.id, name: g.name }))}
         creators={creators.map((u) => ({ id: u.id, name: u.email }))}
         evaluators={evaluators.map((u) => ({ id: u.id, name: u.email }))}
         groupParticipantsMap={groupParticipantsMap}
+        definitions={editableDefinitions}
       />
-
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">Evaluaciones creadas</h3>
-        <div className="mt-4 space-y-3">
-          {definitions.map((definition) => (
-            <article key={definition.id} className="rounded-xl border border-slate-200 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h4 className="text-base font-semibold text-slate-900">{definition.title}</h4>
-                  <p className="mt-1 text-sm text-slate-600">Grupo: {definition.evaluation_group?.name || "Sin grupo"}</p>
-                  <p className="mt-1 text-sm text-slate-600">Preguntas: {definition.questions.length}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Evaluadores: {definition.assignments.map((assignment) => assignment.evaluator.email).join(", ") || "Sin evaluadores"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Participantes: {definition.assignments.reduce((sum, a) => sum + a._count.participant_evaluations, 0) || 0}
-                    {definition.assignments.length > 0 ? ` (${definition.assignments.map((a) => `${a.evaluator.email}: ${a._count.participant_evaluations}`).join(", ")})` : ""}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <form action={cloneEvaluation}>
-                    <input type="hidden" name="definition_id" value={definition.id} />
-                    <button type="submit" className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                      Clonar
-                    </button>
-                  </form>
-                  <form action={deleteEvaluation}>
-                    <input type="hidden" name="definition_id" value={definition.id} />
-                    <button type="submit" className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50">
-                      Eliminar
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }
