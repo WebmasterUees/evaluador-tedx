@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import EvaluationDefinitionForm from "../../../components/admin/EvaluationDefinitionForm";
+import { requireRoles } from "../../../lib/auth-server";
 import { prisma } from "../../../lib/prisma";
 
 const db = prisma as any;
@@ -14,6 +15,7 @@ type QuestionInput = {
 async function createEvaluation(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const title = String(formData.get("title") || "").trim();
   const creator_id = String(formData.get("creator_id") || "");
   const evaluation_group_id = String(formData.get("evaluation_group_id") || "");
@@ -28,7 +30,12 @@ async function createEvaluation(formData: FormData) {
   const participant_ids = formData.getAll("participant_ids").map((value) => String(value));
   const questions_json = String(formData.get("questions_json") || "[]");
 
-  const parsedQuestions = JSON.parse(questions_json) as QuestionInput[];
+  let parsedQuestions: QuestionInput[];
+  try {
+    parsedQuestions = JSON.parse(questions_json) as QuestionInput[];
+  } catch {
+    return;
+  }
   const validQuestions = parsedQuestions
     .map((q) => ({
       text: String(q.text || "").trim(),
@@ -89,6 +96,7 @@ async function createEvaluation(formData: FormData) {
 async function deleteEvaluation(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const definitionId = String(formData.get("definition_id") || "").trim();
   if (!definitionId) return;
 

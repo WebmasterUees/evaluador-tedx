@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: evaluador-tedx-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: evaluador
+      POSTGRES_PASSWORD: evaluador_dev_2026
+      POSTGRES_DB: evaluador_tedx
+    volumes:
+      - evaluador_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evaluador -d evaluador_tedx"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  evaluador_pgdata:

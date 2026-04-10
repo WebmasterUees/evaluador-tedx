@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { requireRoles } from "../../../lib/auth-server";
 import { prisma } from "../../../lib/prisma";
 
 async function createGroup(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   if (!name) return;
@@ -15,6 +17,7 @@ async function createGroup(formData: FormData) {
 async function associateDefinition(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const definitionId = String(formData.get("definition_id") || "");
   const groupId = String(formData.get("group_id") || "");
   if (!definitionId || !groupId) return;
@@ -30,6 +33,7 @@ async function associateDefinition(formData: FormData) {
 async function assignParticipantsToGroup(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const groupId = String(formData.get("group_id") || "").trim();
   if (!groupId) return;
 
@@ -60,26 +64,29 @@ async function assignParticipantsToGroup(formData: FormData) {
 async function deleteGroup(formData: FormData) {
   "use server";
 
+  await requireRoles(["ADMIN", "OPERATOR"]);
   const groupId = String(formData.get("group_id") || "").trim();
   if (!groupId) return;
 
-  await prisma.evaluationDefinition.updateMany({
-    where: { evaluation_group_id: groupId },
-    data: { evaluation_group_id: null },
-  });
+  await prisma.$transaction(async (tx) => {
+    await tx.evaluationDefinition.updateMany({
+      where: { evaluation_group_id: groupId },
+      data: { evaluation_group_id: null },
+    });
 
-  await prisma.groupParticipant.deleteMany({ where: { evaluation_group_id: groupId } });
+    await tx.groupParticipant.deleteMany({ where: { evaluation_group_id: groupId } });
 
-  await prisma.participantEvaluation.deleteMany({
-    where: {
-      assignment: {
-        evaluation_group_id: groupId,
+    await tx.participantEvaluation.deleteMany({
+      where: {
+        assignment: {
+          evaluation_group_id: groupId,
+        },
       },
-    },
-  });
+    });
 
-  await prisma.evaluationAssignment.deleteMany({ where: { evaluation_group_id: groupId } });
-  await prisma.evaluationGroup.delete({ where: { id: groupId } });
+    await tx.evaluationAssignment.deleteMany({ where: { evaluation_group_id: groupId } });
+    await tx.evaluationGroup.delete({ where: { id: groupId } });
+  });
 
   revalidatePath("/admin/dashboards");
   revalidatePath("/dashboards");

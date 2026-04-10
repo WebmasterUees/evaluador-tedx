@@ -21,12 +21,15 @@ type Props = {
   evaluationDefinitionId?: string;
   initialGroupName: string;
   initialResults: DashboardResults;
+  backHref?: string;
+  backLabel?: string;
 };
 
-export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefinitionId, initialGroupName, initialResults }: Props) {
+export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefinitionId, initialGroupName, initialResults, backHref = "/evaluator", backLabel = "Ver mis evaluaciones" }: Props) {
   const [groupName, setGroupName] = useState(initialGroupName);
   const [results, setResults] = useState(initialResults);
   const [lockedMessage, setLockedMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(4);
 
@@ -50,9 +53,11 @@ export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefini
         if (!active) return;
 
         if (!response.ok) {
-          const payload = (await response.json().catch(() => null)) as { locked?: boolean; message?: string } | null;
+          const payload = (await response.json().catch(() => null)) as { locked?: boolean; message?: string; error?: string } | null;
           if (response.status === 403 && payload?.locked) {
             setLockedMessage(payload.message || "Dashboard bloqueado");
+          } else {
+            setErrorMessage(payload?.error || "Error al cargar el dashboard");
           }
           return;
         }
@@ -61,6 +66,7 @@ export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefini
         setGroupName(payload.group.name);
         setResults(payload.results);
         setLockedMessage(null);
+        setErrorMessage(null);
         setLastUpdatedAt(new Date());
         setSecondsUntilRefresh(4);
       } catch {
@@ -99,6 +105,15 @@ export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefini
     );
   }
 
+  if (errorMessage) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
+        <h1 className="text-xl font-semibold">Error</h1>
+        <p className="mt-2 text-sm">{errorMessage}</p>
+      </div>
+    );
+  }
+
   return (
     <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10 md:grid-cols-[1fr_320px]">
       <article className="rounded-2xl bg-white p-6 shadow-sm">
@@ -108,7 +123,7 @@ export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefini
             <p className="mt-1 text-sm text-slate-600">Ranking ponderado por participante</p>
           </div>
           <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600">
-            Actualiza cada 2s
+            Actualiza cada 4s
           </div>
         </div>
 
@@ -120,10 +135,10 @@ export default function LiveDashboardPanel({ evaluationGroupId, evaluationDefini
       <aside className="rounded-2xl bg-slate-900 p-6 text-white shadow-sm">
         <div className="mb-4">
           <Link
-            href="/evaluator"
+            href={backHref}
             className="inline-flex rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-white/10"
           >
-            Ver mis evaluaciones
+            {backLabel}
           </Link>
         </div>
         <p className="text-xs uppercase tracking-[0.12em] text-slate-300">Puntaje del ganador</p>

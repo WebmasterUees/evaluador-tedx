@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Option = { id: string; name: string };
 
@@ -31,6 +31,12 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
     if (!selectedGroupId) return new Set<string>();
     return new Set(groupParticipantsMap[selectedGroupId] || []);
   }, [groupParticipantsMap, selectedGroupId]);
+
+  const [checkedParticipantIds, setCheckedParticipantIds] = useState<Set<string>>(defaultGroupParticipantIds);
+
+  useEffect(() => {
+    setCheckedParticipantIds(defaultGroupParticipantIds);
+  }, [defaultGroupParticipantIds]);
 
   return (
     <form action={action} className="space-y-5 rounded-2xl bg-white p-6 shadow-sm">
@@ -177,7 +183,18 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
                 type="checkbox"
                 name="participant_ids"
                 value={participant.id}
-                defaultChecked={defaultGroupParticipantIds.has(participant.id)}
+                checked={checkedParticipantIds.has(participant.id)}
+                onChange={(event) => {
+                  setCheckedParticipantIds((prev) => {
+                    const next = new Set(prev);
+                    if (event.target.checked) {
+                      next.add(participant.id);
+                    } else {
+                      next.delete(participant.id);
+                    }
+                    return next;
+                  });
+                }}
                 className="h-4 w-4"
               />
               {participant.name}

@@ -15,8 +15,14 @@ async function submitEvaluation(formData: FormData) {
     redirect("/evaluator");
   }
 
-  const evaluation = await prisma.participantEvaluation.findUnique({
-    where: { id: participantEvaluationId },
+  const evaluation = await prisma.participantEvaluation.findFirst({
+    where: {
+      id: participantEvaluationId,
+      is_complete: false,
+      assignment: {
+        evaluator_id: session.user.id,
+      },
+    },
     include: {
       assignment: {
         include: {
@@ -28,37 +34,55 @@ async function submitEvaluation(formData: FormData) {
     },
   });
 
-  if (!evaluation || evaluation.assignment.evaluator_id !== session.user.id) {
+  if (!evaluation) {
     redirect("/evaluator");
   }
 
+  const scores: { questionId: string; score: number }[] = [];
+
   for (const question of evaluation.assignment.evaluation_definition.questions) {
-    const score = Number(formData.get(`q_${question.id}`) || 0);
+    const raw = formData.get(`q_${question.id}`);
+    if (raw === null) {
+      const params = new URLSearchParams({ pe: participantEvaluationId });
+      if (assignmentId) params.set("a", assignmentId);
+      redirect(`/evaluator?${params.toString()}`);
+    }
+    const score = Number(raw);
     if (!Number.isInteger(score) || score < question.scale_min || score > question.scale_max) {
       const params = new URLSearchParams({ pe: participantEvaluationId });
       if (assignmentId) params.set("a", assignmentId);
       redirect(`/evaluator?${params.toString()}`);
     }
-
-    await prisma.response.upsert({
-      where: {
-        participant_evaluation_id_question_id: {
-          participant_evaluation_id: participantEvaluationId,
-          question_id: question.id,
-        },
-      },
-      update: { score },
-      create: {
-        participant_evaluation_id: participantEvaluationId,
-        question_id: question.id,
-        score,
-      },
-    });
+    scores.push({ questionId: question.id, score });
   }
 
-  await prisma.participantEvaluation.update({
-    where: { id: participantEvaluationId },
-    data: { is_complete: true },
+  await prisma.$transaction(async (tx) => {
+    for (const { questionId, score } of scores) {
+      await tx.response.upsert({
+        where: {
+          participant_evaluation_id_question_id: {
+            participant_evaluation_id: participantEvaluationId,
+            question_id: questionId,
+          },
+        },
+        update: { score },
+        create: {
+          participant_evaluation_id: participantEvaluationId,
+          question_id: questionId,
+          score,
+        },
+      });
+    }
+
+    await tx.participantEvaluation.update({
+      where: {
+        id: participantEvaluationId,
+        assignment: {
+          evaluator_id: session.user.id,
+        },
+      },
+      data: { is_complete: true },
+    });
   });
 
   const nextInSameAssignment = assignmentId
@@ -209,7 +233,7 @@ export default async function EvaluatorPage({
                 Continuar
               </Link>
             )}
-            {resultsHref ? (
+            {hasFinishedAll && resultsHref ? (
               <Link
                 href={resultsHref}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -273,8 +297,12 @@ export default async function EvaluatorPage({
     redirect("/evaluator");
   }
 
+  const selectedByPe = params.pe ? scopedAssigned.find((item) => item.id === params.pe) : undefined;
+  if (params.pe && !selectedByPe) {
+    redirect(`/evaluator?a=${selectedAssignmentId}`);
+  }
   const selected =
-    scopedAssigned.find((item) => item.id === params.pe) ||
+    selectedByPe ||
     scopedAssigned.find((item) => !item.is_complete) ||
     scopedAssigned[0];
   const isReadOnly = selected.is_complete;

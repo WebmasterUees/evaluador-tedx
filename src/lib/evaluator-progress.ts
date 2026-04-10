@@ -17,6 +17,16 @@ export async function isEvaluatorWorkComplete(
   evaluationGroupId: string,
   evaluationDefinitionId?: string,
 ): Promise<boolean> {
+  const hasAssignment = await prisma.evaluationAssignment.count({
+    where: {
+      evaluator_id: evaluatorId,
+      evaluation_group_id: evaluationGroupId,
+      ...(evaluationDefinitionId ? { evaluation_definition_id: evaluationDefinitionId } : {}),
+    },
+  });
+
+  if (hasAssignment === 0) return false;
+
   const pendingCount = await prisma.participantEvaluation.count({
     where: {
       assignment: {

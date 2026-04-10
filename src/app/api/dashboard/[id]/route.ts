@@ -3,14 +3,18 @@ import { auth } from "../../../../auth";
 import { isEvaluatorWorkComplete, getWeightedResultsByGroup } from "../../../../lib/evaluator-progress";
 import { prisma } from "../../../../lib/prisma";
 
-export async function GET(_: Request, context: any) {
+export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  const { id } = context.params as { id: string };
+  const { id } = await context.params;
   const url = new URL(_.url);
   const definitionId = url.searchParams.get("definition") || undefined;
 
   if (!session?.user?.id || !session.user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!definitionId) {
+    return NextResponse.json({ error: "Missing required parameter: definition" }, { status: 400 });
   }
 
   if (session.user.role === "EVALUATOR") {

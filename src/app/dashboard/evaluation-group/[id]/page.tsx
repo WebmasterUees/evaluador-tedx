@@ -1,6 +1,7 @@
 import LiveDashboardPanel from "../../../../components/dashboard/LiveDashboardPanel";
 import { redirect } from "next/navigation";
 import { requireRoles } from "../../../../lib/auth-server";
+import { roleHomePath, type AppRole } from "../../../../lib/auth";
 import { isEvaluatorWorkComplete, getWeightedResultsByGroup } from "../../../../lib/evaluator-progress";
 import { prisma } from "../../../../lib/prisma";
 
@@ -28,6 +29,17 @@ export default async function EvaluationGroupDashboardPage({
     }
   }
 
+  if (!definitionId) {
+    return (
+      <section className="mx-auto max-w-4xl px-4 py-10">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <h1 className="text-xl font-semibold text-slate-900">Sin evaluaciones</h1>
+          <p className="mt-2 text-sm text-slate-600">No hay evaluaciones configuradas para este grupo.</p>
+        </div>
+      </section>
+    );
+  }
+
   if (session.user.role === "EVALUATOR") {
     const completed = await isEvaluatorWorkComplete(session.user.id, id, definitionId);
     if (!completed) {
@@ -47,12 +59,18 @@ export default async function EvaluationGroupDashboardPage({
     getWeightedResultsByGroup(id, definitionId),
   ]);
 
+  const role = session.user.role as AppRole;
+  const backHref = role === "EVALUATOR" ? "/evaluator" : roleHomePath(role);
+  const backLabel = role === "EVALUATOR" ? "Ver mis evaluaciones" : "Volver al panel";
+
   return (
     <LiveDashboardPanel
       evaluationGroupId={id}
       evaluationDefinitionId={definitionId}
       initialGroupName={group?.name || "Grupo"}
       initialResults={results}
+      backHref={backHref}
+      backLabel={backLabel}
     />
   );
 }
