@@ -148,7 +148,12 @@ export default async function EvaluationsPage() {
       include: {
         questions: true,
         evaluation_group: true,
-        assignments: { include: { evaluator: true } },
+        assignments: {
+          include: {
+            evaluator: true,
+            _count: { select: { participant_evaluations: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -186,6 +191,10 @@ export default async function EvaluationsPage() {
                   <p className="mt-1 text-sm text-slate-600">Preguntas: {definition.questions.length}</p>
                   <p className="mt-1 text-sm text-slate-600">
                     Evaluadores: {definition.assignments.map((assignment) => assignment.evaluator.email).join(", ") || "Sin evaluadores"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Participantes: {definition.assignments.reduce((sum, a) => sum + a._count.participant_evaluations, 0) || 0}
+                    {definition.assignments.length > 0 ? ` (${definition.assignments.map((a) => `${a.evaluator.email}: ${a._count.participant_evaluations}`).join(", ")})` : ""}
                   </p>
                 </div>
                 <div className="flex gap-2">
