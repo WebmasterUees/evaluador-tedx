@@ -1,6 +1,6 @@
 import LiveDashboardPanel from "../../../../components/dashboard/LiveDashboardPanel";
 import { redirect } from "next/navigation";
-import { requireRoles } from "../../../../lib/auth-server";
+import { requireDashboardViewer } from "../../../../lib/auth-server";
 import { roleHomePath, type AppRole } from "../../../../lib/auth";
 import { isEvaluatorWorkComplete, getWeightedResultsByGroup } from "../../../../lib/evaluator-progress";
 import { prisma } from "../../../../lib/prisma";
@@ -14,7 +14,7 @@ export default async function EvaluationGroupDashboardPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const session = await requireRoles(["EVALUATOR", "ADMIN", "OPERATOR"]);
+  const session = await requireDashboardViewer();
 
   let definitionId = query.definition;
   if (!definitionId) {

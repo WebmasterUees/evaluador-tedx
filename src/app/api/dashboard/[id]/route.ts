@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "../../../../auth";
+import { canAccessDashboardDetail } from "../../../../lib/auth";
 import { isEvaluatorWorkComplete, getWeightedResultsByGroup } from "../../../../lib/evaluator-progress";
 import { prisma } from "../../../../lib/prisma";
 
@@ -11,6 +12,10 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
 
   if (!session?.user?.id || !session.user.role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canAccessDashboardDetail(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (!definitionId) {

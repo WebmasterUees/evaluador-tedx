@@ -1,11 +1,11 @@
 import { prisma } from "../../../lib/prisma";
-import { requireRoles } from "../../../lib/auth-server";
+import { requireAdmin } from "../../../lib/auth-server";
 import { revalidatePath } from "next/cache";
 
 async function createParticipant(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
 
@@ -16,7 +16,7 @@ async function createParticipant(formData: FormData) {
 async function deleteParticipant(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const participantId = String(formData.get("participant_id") || "").trim();
   if (!participantId) return;
 

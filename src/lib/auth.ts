@@ -15,3 +15,15 @@ export function roleHomePath(role: AppRole): string {
 export function canAccessAdmin(role: AppRole): boolean {
   return role === "ADMIN" || role === "OPERATOR";
 }
+
+export function isAdmin(role: AppRole): boolean {
+  return role === "ADMIN";
+}
+
+export function canAccessOperatorResults(role: AppRole): boolean {
+  return role === "ADMIN" || role === "OPERATOR";
+}
+
+export function canAccessDashboardDetail(role: AppRole): boolean {
+  return role === "ADMIN" || role === "OPERATOR" || role === "EVALUATOR";
+}

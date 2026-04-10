@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import EvaluationDefinitionForm from "../../../components/admin/EvaluationDefinitionForm";
-import { requireRoles } from "../../../lib/auth-server";
+import { requireAdmin } from "../../../lib/auth-server";
 import { prisma } from "../../../lib/prisma";
 
 const db = prisma as any;
@@ -15,7 +15,7 @@ type QuestionInput = {
 async function createEvaluation(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const editingId = String(formData.get("editing_id") || "").trim();
   const title = String(formData.get("title") || "").trim();
   const creator_id = String(formData.get("creator_id") || "");
@@ -122,7 +122,7 @@ async function createEvaluation(formData: FormData) {
 async function deleteEvaluation(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const definitionId = String(formData.get("definition_id") || "").trim();
   if (!definitionId) return;
 
@@ -134,7 +134,7 @@ async function deleteEvaluation(formData: FormData) {
 async function cloneEvaluation(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const definitionId = String(formData.get("definition_id") || "").trim();
   if (!definitionId) return;
 
@@ -195,7 +195,7 @@ export default async function EvaluationsPage() {
   const [participants, groups, creators, evaluators, definitions, groupParticipants] = await Promise.all([
     prisma.participant.findMany({ orderBy: { name: "asc" } }),
     prisma.evaluationGroup.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.user.findMany({ where: { role: { in: ["ADMIN", "OPERATOR"] } }, orderBy: { email: "asc" } }),
+    prisma.user.findMany({ where: { role: "ADMIN" }, orderBy: { email: "asc" } }),
     prisma.user.findMany({ where: { role: "EVALUATOR" }, orderBy: { email: "asc" } }),
     prisma.evaluationDefinition.findMany({
       include: {

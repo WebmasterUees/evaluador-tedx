@@ -1,12 +1,12 @@
 import { revalidatePath } from "next/cache";
 import GroupParticipantSelector from "../../../components/admin/GroupParticipantSelector";
-import { requireRoles } from "../../../lib/auth-server";
+import { requireAdmin } from "../../../lib/auth-server";
 import { prisma } from "../../../lib/prisma";
 
 async function createGroup(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   if (!name) return;
@@ -18,7 +18,7 @@ async function createGroup(formData: FormData) {
 async function associateDefinition(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const definitionId = String(formData.get("definition_id") || "");
   const groupId = String(formData.get("group_id") || "");
   if (!definitionId || !groupId) return;
@@ -34,7 +34,7 @@ async function associateDefinition(formData: FormData) {
 async function assignParticipantsToGroup(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const groupId = String(formData.get("group_id") || "").trim();
   if (!groupId) return;
 
@@ -65,7 +65,7 @@ async function assignParticipantsToGroup(formData: FormData) {
 async function deleteGroup(formData: FormData) {
   "use server";
 
-  await requireRoles(["ADMIN", "OPERATOR"]);
+  await requireAdmin();
   const groupId = String(formData.get("group_id") || "").trim();
   if (!groupId) return;
 
