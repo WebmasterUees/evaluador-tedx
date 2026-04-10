@@ -186,8 +186,26 @@ export default function EvaluationDefinitionForm({ participants, evaluators, gro
       </fieldset>
 
       <fieldset className="space-y-2 rounded-xl border border-slate-200 p-4">
-        <legend className="px-2 text-sm font-semibold text-slate-700">Participantes asignados</legend>
-        <p className="px-2 text-xs text-slate-500">Se marcan por defecto los participantes asignados al grupo seleccionado.</p>
+        <div className="flex items-center justify-between px-2">
+          <div>
+            <legend className="text-sm font-semibold text-slate-700">Participantes asignados</legend>
+            <p className="text-xs text-slate-500">Se marcan por defecto los participantes asignados al grupo seleccionado.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (checkedParticipantIds.size === participants.length) {
+                setCheckedParticipantIds(new Set());
+              } else {
+                setCheckedParticipantIds(new Set(participants.map((p) => p.id)));
+                setError(null);
+              }
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            {checkedParticipantIds.size === participants.length ? "Deseleccionar todos" : "Seleccionar todos"}
+          </button>
+        </div>
         <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
           {participants.map((participant) => (
             <label key={participant.id} className="inline-flex items-center gap-2 text-sm text-slate-700">
