@@ -45,8 +45,9 @@ export async function getWeightedResultsByGroup(
   evaluationGroupId: string,
   evaluationDefinitionId?: string,
 ): Promise<DashboardResults> {
-  const participantEvaluations = await prisma.participantEvaluation.findMany({
+    const participantEvaluations = await prisma.participantEvaluation.findMany({
     where: {
+      is_complete: true,
       assignment: {
         evaluation_group_id: evaluationGroupId,
         ...(evaluationDefinitionId ? { evaluation_definition_id: evaluationDefinitionId } : {}),
