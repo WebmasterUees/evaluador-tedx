@@ -175,13 +175,15 @@ export default async function DashboardsPage() {
           {groups.map((group) => {
             const selectedParticipants = groupParticipantsMap[group.id] || new Set<string>();
 
+            const selectedArray = Array.from(selectedParticipants);
+
             return (
               <GroupParticipantSelector
-                key={group.id}
+                key={`${group.id}-${selectedArray.sort().join(",")}`}
                 groupId={group.id}
                 groupName={group.name}
                 participants={participants.map((p) => ({ id: p.id, name: p.name }))}
-                initialSelected={Array.from(selectedParticipants)}
+                initialSelected={selectedArray}
                 action={assignParticipantsToGroup}
               />
             );
