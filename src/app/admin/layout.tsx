@@ -2,10 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import LogoutButton from "../../components/LogoutButton";
 import NavLink from "../../components/NavLink";
-import { requireRoles } from "../../lib/auth-server";
+import { requireAdmin } from "../../lib/auth-server";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const session = await requireRoles(["ADMIN", "OPERATOR"]);
+  const session = await requireAdmin();
 
   return (
     <main className="min-h-screen bg-slate-50">

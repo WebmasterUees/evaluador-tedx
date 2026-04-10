@@ -11,7 +11,7 @@ export default async function OperadorLayout({ children }: { children: ReactNode
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Operador</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Resultados</p>
             <h1 className="text-lg font-semibold text-slate-900">{session.user.email}</h1>
           </div>
           <div className="flex items-center gap-2">
