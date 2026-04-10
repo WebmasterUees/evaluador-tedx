@@ -172,6 +172,7 @@ export default async function EvaluatorPage({
       id: string;
       title: string;
       groupId: string;
+      definitionId: string;
       total: number;
       pending: number;
       firstPendingId: string | null;
@@ -185,6 +186,7 @@ export default async function EvaluatorPage({
         id: item.assignment.id,
         title: item.assignment.evaluation_definition.title,
         groupId: item.assignment.evaluation_group_id,
+        definitionId: item.assignment.evaluation_definition_id,
         total: 1,
         pending: item.is_complete ? 0 : 1,
         firstPendingId: item.is_complete ? null : item.id,
@@ -273,6 +275,14 @@ export default async function EvaluatorPage({
                     Pendientes: {assignment.pending} de {assignment.total}
                   </p>
                 </div>
+                {assignment.pending === 0 ? (
+                  <Link
+                    href={`/dashboard/evaluation-group/${assignment.groupId}?definition=${assignment.definitionId}`}
+                    className="rounded-lg bg-[#e10613] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    Ver resultados
+                  </Link>
+                ) : null}
                 <Link
                   href={
                     assignment.firstPendingId
