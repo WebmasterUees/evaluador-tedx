@@ -114,12 +114,19 @@ async function cloneEvaluation(formData: FormData) {
 
   const source = await prisma.evaluationDefinition.findUnique({
     where: { id: definitionId },
-    include: { questions: true, assignments: true },
+    include: {
+      questions: true,
+      assignments: {
+        include: {
+          participant_evaluations: { select: { participant_id: true } },
+        },
+      },
+    },
   });
 
   if (!source) return;
 
-  await prisma.evaluationDefinition.create({
+  const definition = await prisma.evaluationDefinition.create({
     data: {
       title: `${source.title} (copia)`,
       creator_id: source.creator_id,
@@ -134,6 +141,26 @@ async function cloneEvaluation(formData: FormData) {
       },
     },
   });
+
+  for (const sourceAssignment of source.assignments) {
+    const assignment = await prisma.evaluationAssignment.create({
+      data: {
+        evaluator_id: sourceAssignment.evaluator_id,
+        evaluation_definition_id: definition.id,
+        evaluation_group_id: sourceAssignment.evaluation_group_id,
+      },
+    });
+
+    const participantIds = sourceAssignment.participant_evaluations.map((pe) => pe.participant_id);
+    if (participantIds.length > 0) {
+      await prisma.participantEvaluation.createMany({
+        data: participantIds.map((participant_id) => ({
+          assignment_id: assignment.id,
+          participant_id,
+        })),
+      });
+    }
+  }
 
   revalidatePath("/admin/evaluations");
 }
